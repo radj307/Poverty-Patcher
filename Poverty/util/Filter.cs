@@ -1,4 +1,5 @@
 using Mutagen.Bethesda.Plugins;
+using Mutagen.Bethesda.Plugins.Cache;
 using Mutagen.Bethesda.Plugins.Records;
 using Mutagen.Bethesda.Plugins.Records.Internals;
 using Mutagen.Bethesda.Skyrim;
@@ -129,5 +130,70 @@ namespace Poverty.util
         public bool this[string editorID] { get { return Allows(editorID); } }
         public bool this[SkyrimMajorRecord record] { get { return Allows(record); } }
         public bool this[ISkyrimMajorRecordGetter record] { get { return Allows(record); } }
+    }
+    public class DualIDFilter
+    {
+        public DualIDFilter(List<string> whitelist, List<string> blacklist)
+        {
+            Enable = whitelist.Count > 0 && blacklist.Count > 0;
+            Whitelist = new(FilterType.WHITELIST, whitelist);
+            Blacklist = new(FilterType.BLACKLIST, blacklist);
+        }
+
+        public bool Enable;
+        public bool ExclusiveWhitelist = false;
+        public IDFilter Whitelist;
+        public IDFilter Blacklist;
+
+        public bool Allows(string EditorID)
+        {
+            return Enable && (ExclusiveWhitelist
+                ? (Whitelist[EditorID] && Blacklist[EditorID])
+                : (Whitelist[EditorID] || Blacklist[EditorID]));
+        }
+        public bool Denies(string EditorID)
+        {
+            return Enable && !Allows(EditorID);
+        }
+        public bool this[string EditorID] { get { return Allows(EditorID); } }
+    }
+    public class DualLinkFilter<T> where T : class, IMajorRecordGetter
+    {
+        public DualLinkFilter(List<FormLink<T>> whitelist, List<FormLink<T>> blacklist)
+        {
+            Enable = whitelist.Count > 0 && blacklist.Count > 0;
+            Whitelist = new(FilterType.WHITELIST, whitelist);
+            Blacklist = new(FilterType.BLACKLIST, blacklist);
+        }
+
+        public bool Enable;
+        public bool ExclusiveWhitelist = false;
+        public LinkFilter<T> Whitelist;
+        public LinkFilter<T> Blacklist;
+
+        public bool Allows(T record)
+        {
+            return Enable && (ExclusiveWhitelist
+                ? (Whitelist[record] && Blacklist[record])
+                : (Whitelist[record] || Blacklist[record])
+            );
+        }
+        public bool Allows(FormLink<T> link)
+        {
+            return Enable && (ExclusiveWhitelist
+                ? (Whitelist[link] && Blacklist[link])
+                : (Whitelist[link] || Blacklist[link])
+            );
+        }
+        public bool Denies(T record)
+        {
+            return Enable && !Allows(record);
+        }
+        public bool Denies(FormLink<T> link)
+        {
+            return Enable && !Allows(link);
+        }
+        public bool this[T record] { get { return Allows(record); } }
+        public bool this[FormLink<T> link] { get { return Allows(link); } }
     }
 }
