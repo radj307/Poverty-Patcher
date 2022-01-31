@@ -1,6 +1,9 @@
 using Mutagen.Bethesda.Plugins;
+using Mutagen.Bethesda.Plugins.Records;
+using Mutagen.Bethesda.Plugins.Records.Internals;
 using Mutagen.Bethesda.Skyrim;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Poverty.util
 {
@@ -9,14 +12,14 @@ namespace Poverty.util
         WHITELIST,
         BLACKLIST,
     }
-    public class Filter<T> where T : SkyrimMajorRecord
+    public class LinkFilter<T> where T : class, IMajorRecordGetter
     {
-        public Filter(FilterType ty, List<FormLink<T>> list)
+        public LinkFilter(FilterType ty, List<FormLink<T>> list)
         {
             type = ty;
             List = list;
         }
-        public Filter(FilterType ty = FilterType.WHITELIST)
+        public LinkFilter(FilterType ty = FilterType.WHITELIST)
         {
             type = ty;
             List = new();
@@ -25,42 +28,106 @@ namespace Poverty.util
         private readonly FilterType type;
         public List<FormLink<T>> List;
 
-        virtual public bool ShouldSkip(T record)
+        virtual public bool Allows(FormLink<T> record)
+        {
+            return List.Contains(record)
+                ? type == FilterType.WHITELIST // return true when entry isn't present and this is a whitelist
+                : type == FilterType.BLACKLIST;// return true when entry is present and this is a blacklist
+        }
+        virtual public bool Denies(FormLink<T> record)
         {
             return List.Contains(record)
                 ? type == FilterType.BLACKLIST // return true when entry is present and this is a blacklist
                 : type == FilterType.WHITELIST;// return true when entry isn't present and this is a whitelist
         }
+
+        // Checks if the filter allows the object
+        public bool this[FormLink<T> link] { get { return Allows(link); } }
+
+        public bool this[T record] { get { return Allows(record); } }
     }
-    public class DualFilter<T> where T : SkyrimMajorRecord
+    public class IDFilter
     {
-        public DualFilter(Filter<T> whitelist, Filter<T> blacklist)
+        public IDFilter(FilterType ty, List<string> list)
         {
-            Whitelist = whitelist;
-            Blacklist = blacklist;
+            type = ty;
+            List = list;
         }
-        public DualFilter()
+        public IDFilter(FilterType ty)
         {
-            Whitelist = new();
-            Blacklist = new();
-        }
-
-        public Filter<T> Whitelist;
-        public Filter<T> Blacklist;
-
-        // Checks if the given record is invalid
-        public bool ShouldSkip(T record)
-        {
-            return Whitelist.ShouldSkip(record) || Blacklist.ShouldSkip(record);
+            type = ty;
+            List = new();
         }
 
-        // Checks if the given record (passed with operator[]) is valid
-        public bool this[T record]
+        private readonly FilterType type;
+        public List<string> List;
+
+        virtual public bool Allows(string editorID)
         {
-            get
+            return List.Any(id => id.Equals(editorID, System.StringComparison.OrdinalIgnoreCase))
+                ? type == FilterType.WHITELIST
+                : type == FilterType.BLACKLIST;
+        }
+        virtual public bool Denies(string editorID)
+        {
+            return List.Any(id => id.Equals(editorID, System.StringComparison.OrdinalIgnoreCase))
+                ? type == FilterType.BLACKLIST
+                : type == FilterType.WHITELIST;
+        }
+
+        virtual public bool Allows(SkyrimMajorRecord record)
+        {
+            if (record.EditorID != null)
             {
-                return record.EditorID != null && !ShouldSkip(record);
+                foreach (var entry in List)
+                { // return true when record is present and this is a whitelist, false if this is a blacklist
+                    if (entry.Equals(record.EditorID, System.StringComparison.OrdinalIgnoreCase))
+                        return type == FilterType.WHITELIST;
+                }
             }
+            return false;
         }
+        virtual public bool Allows(ISkyrimMajorRecordGetter record)
+        {
+            if (record.EditorID != null)
+            {
+                foreach (var entry in List)
+                { // return true when record is present and this is a whitelist, false if this is a blacklist
+                    if (entry.Equals(record.EditorID, System.StringComparison.OrdinalIgnoreCase))
+                        return type == FilterType.WHITELIST;
+                }
+            }
+            return false;
+        }
+
+        virtual public bool Denies(SkyrimMajorRecord record)
+        {
+            if (record.EditorID != null)
+            {
+                foreach (var entry in List)
+                { // return true when record is present and this is a blacklist, false if this is a whitelist
+                    if (entry.Equals(record.EditorID, System.StringComparison.OrdinalIgnoreCase))
+                        return type == FilterType.BLACKLIST;
+                }
+            }
+            return false;
+        }
+        virtual public bool Denies(ISkyrimMajorRecordGetter record)
+        {
+            if (record.EditorID != null)
+            {
+                foreach (var entry in List)
+                { // return true when record is present and this is a blacklist, false if this is a whitelist
+                    if (entry.Equals(record.EditorID, System.StringComparison.OrdinalIgnoreCase))
+                        return type == FilterType.BLACKLIST;
+                }
+            }
+            return false;
+        }
+
+        // Checks if the filter allows the object
+        public bool this[string editorID] { get { return Allows(editorID); } }
+        public bool this[SkyrimMajorRecord record] { get { return Allows(record); } }
+        public bool this[ISkyrimMajorRecordGetter record] { get { return Allows(record); } }
     }
 }

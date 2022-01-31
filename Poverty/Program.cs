@@ -13,6 +13,35 @@ namespace Poverty
     {
         private static Lazy<Settings> _lazySettings = null!;
         private static Settings Settings => _lazySettings.Value;
+        private static GameRelease GameRelease = GameRelease.SkyrimSE;
+
+        private static bool same_as<T1, T2>()
+        {
+            return typeof(T1).Equals(typeof(T2));
+        }
+
+        internal static T Process<T>(T record) where T : SkyrimMajorRecord
+        {
+            if (same_as<T, Ingredient>())
+            {
+                Ingredient ingr = (Ingredient)record.DeepCopy();
+                if (ingr.Keywords == null)
+                    return record;
+
+                if (ingr.Keywords.Contains(GameRelease == GameRelease.SkyrimSE ? Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.VendorItemPotion : Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.VendorItemPotion)
+                    || ingr.Keywords.Contains(GameRelease == GameRelease.SkyrimSE ? Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.VendorItemPoison : Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.VendorItemPoison))
+                    ingr.Name = "DummyPotion";
+                else if ((ingr.Flags & Ingredient.Flag.FoodItem) != 0)
+                {
+                    // determine whether ingredient is a food or drink somehow
+                    ingr.Name = "DummyDrink";
+                    ingr.Name = "DummyFood";
+
+                }
+
+            }
+            return record;
+        }
 
         public static async Task<int> Main(string[] args)
         {
@@ -27,12 +56,14 @@ namespace Poverty
         {
             int count = 0;
 
-            // handle LVLI records
-            if (Settings.Process_LVLI)
+            GameRelease = state.GameRelease;
+
+            // handle leveled items - LVLI records
+            if (Settings.IsEnabled<LeveledItem>())
             {
                 foreach (var lvli in state.LoadOrder.PriorityOrder.LeveledItem().WinningOverrides())
                 {
-                    if (!Settings.IsValidTarget(lvli))
+                    if (!Settings.Filter[lvli])
                         continue;
 
                     var copy = lvli.DeepCopy();
@@ -46,23 +77,33 @@ namespace Poverty
                     state.PatchMod.LeveledItems.Set(copy);
                 }
             }
-            // handle REFR records
-            if (Settings.Process_CONT)
+            // handle items in containers - CONT records
+            if (Settings.IsEnabled<ContainerEntry>())
             {
-                foreach (var lvli in state.LoadOrder.PriorityOrder.LeveledItem().WinningOverrides())
+                foreach (var cont in state.LoadOrder.PriorityOrder.Container().WinningOverrides())
                 {
-                    if (!Settings.IsValidTarget(lvli))
+                    if (cont.Items == null || cont.Items.Count == 0 || !Settings.Filter[cont])
                         continue;
 
-                    var copy = lvli.DeepCopy();
-                    int copyCount = count;
+                    int changeCount = 0;
+                    Container copy = cont.DeepCopy();
 
-                    // do stuff
+                    foreach (var entry in copy.Items!)
+                    {
+                        if (Settings.Filter.CheckAndResolve(entry, state.LinkCache, out var link))
+                        {
+                            copy.Items.Remove(entry);
+                            changeCount++;
+                        }
+                    }
 
-                    if (copyCount <= count)
+                    if (changeCount == 0) // if the counter didn't increase, don't add to patch
                         continue;
 
-                    state.PatchMod.LeveledItems.Set(copy);
+                    state.PatchMod.Containers.Set(copy);
+
+                    if (Settings.LogAll)
+                        Console.WriteLine($"[{++count}]\t Finished processing items in container: \"{cont.EditorID ?? ""}\"");
                 }
             }
 
