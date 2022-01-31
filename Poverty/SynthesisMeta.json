@@ -1,0 +1,8 @@
+{
+  "Nickname": "Poverty Patcher",
+  "Visibility": "Visible",
+  "OneLineDescription": "Patcher for Poverty - You Hunger Reborn",
+  "LongDescription": "",
+  "PreferredAutoVersioning": "Default",
+  "RequiredMods": ["Poverty.esp"]
+}
