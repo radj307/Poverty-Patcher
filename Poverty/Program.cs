@@ -13,32 +13,161 @@ namespace Poverty
     {
         private static Lazy<Settings> _lazySettings = null!;
         private static Settings Settings => _lazySettings.Value;
-        private static GameRelease GameRelease = GameRelease.SkyrimSE;
 
         private static bool same_as<T1, T2>()
         {
             return typeof(T1).Equals(typeof(T2));
         }
 
-        internal static T Process<T>(T record) where T : SkyrimMajorRecord
+        internal static ISkyrimMajorRecordGetter Process<T>(IPatcherState<ISkyrimMod, ISkyrimModGetter> state, T record) where T : ISkyrimMajorRecordGetter
         {
-            if (same_as<T, Ingredient>())
+            if (same_as<T, Ingestible>()) // INGESTIBLE
+            {
+                Ingestible alch = (Ingestible)record.DeepCopy();
+                if (alch.Keywords == null)
+                    return alch;
+                if (CheckKeywords.HasAny(alch.Keywords, new()
+                {
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.VendorItemPotion,
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.VendorItemPoison,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.VendorItemPotion,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.VendorItemPoison,
+                }))
+                {
+                    alch.Name = "DummyPotion";
+                }
+                else if (alch.ConsumeSound.Equals(
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.SoundDescriptor.ITMPotionUse)
+                    || alch.ConsumeSound.Equals(Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.SoundDescriptor.ITMPotionUse)
+                    )
+                {
+                    alch.Name = "DummyDrink";
+                }
+                else
+                {
+                    alch.Name = "DummyFood";
+                }
+                return alch;
+            }
+            else if (same_as<T, Ammunition>()) // AMMUNITION
+            {
+                Ammunition ammo = (Ammunition)record.DeepCopy();
+                ammo.Name = "DummyArrow";
+                return ammo;
+            }
+            else if (same_as<T, Armor>()) // ARMOR
+            {
+                Armor armo = (Armor)record.DeepCopy();
+                if (CheckKeywords.HasAny(armo.Keywords, new()
+                {
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ArmorBoots,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ArmorBoots,
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ClothingFeet,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ClothingFeet
+                }))
+                {
+                    armo.Name = "DummyBoots";
+                }
+                else if (CheckKeywords.HasAny(armo.Keywords, new()
+                {
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ArmorCuirass,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ArmorCuirass,
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ClothingBody,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ClothingBody
+                }))
+                {
+                    armo.Name = "DummyCuirass";
+                }
+                else if (CheckKeywords.HasAny(armo.Keywords, new()
+                {
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ArmorGauntlets,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ArmorGauntlets,
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ClothingHands,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ClothingHands
+                }))
+                {
+                    armo.Name = "DummyGauntlets";
+                }
+                else if (CheckKeywords.HasAny(armo.Keywords, new()
+                {
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ArmorHelmet,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ArmorHelmet,
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ClothingHead,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ClothingHead
+                }))
+                {
+                    armo.Name = "DummyHelmet";
+                }
+                else if (CheckKeywords.HasAny(armo.Keywords, new()
+                {
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ArmorShield,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ArmorShield
+                }))
+                {
+                    armo.Name = "DummyShield";
+                }
+                else if (CheckKeywords.HasAny(armo.Keywords, new()
+                {
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ClothingCirclet,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ClothingCirclet
+                }))
+                {
+                    armo.Name = "DummyCirclet";
+                }
+                else if (CheckKeywords.HasAny(armo.Keywords, new()
+                {
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ClothingRing,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ClothingRing
+                }))
+                {
+                    armo.Name = "DummyRing";
+                }
+                else if (CheckKeywords.HasAny(armo.Keywords, new()
+                {
+                    Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.ClothingNecklace,
+                    Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.ClothingNecklace
+                }))
+                {
+                    armo.Name = "DummyNecklace";
+                }
+                return armo;
+            }
+            else if (same_as<T, Book>())
+            {
+                Book book = (Book)record.DeepCopy();
+                book.Name = "DummyBook";
+                return book;
+            }
+            else if (same_as<T, Ingredient>())
             {
                 Ingredient ingr = (Ingredient)record.DeepCopy();
-                if (ingr.Keywords == null)
-                    return record;
-
-                if (ingr.Keywords.Contains(GameRelease == GameRelease.SkyrimSE ? Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.VendorItemPotion : Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.VendorItemPotion)
-                    || ingr.Keywords.Contains(GameRelease == GameRelease.SkyrimSE ? Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.Keyword.VendorItemPoison : Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.Keyword.VendorItemPoison))
-                    ingr.Name = "DummyPotion";
-                else if ((ingr.Flags & Ingredient.Flag.FoodItem) != 0)
+                ingr.Name = "DummyIngredient";
+                return ingr;
+            }
+            else if (same_as<T, MiscItem>())
+            {
+                MiscItem misc = (MiscItem)record.DeepCopy();
+                if (misc.EditorID == null)
+                    return misc;
+                if (misc.Equals(Mutagen.Bethesda.FormKeys.SkyrimSE.Skyrim.MiscItem.Gold001) || misc.Equals(Mutagen.Bethesda.FormKeys.SkyrimLE.Skyrim.MiscItem.Gold001))
                 {
-                    // determine whether ingredient is a food or drink somehow
-                    ingr.Name = "DummyDrink";
-                    ingr.Name = "DummyFood";
-
+                    misc.Name = "DummySeptim";
                 }
+                else // referenced by a COBJ (constructible object) record
+                {
+                    misc.AsLink().;
+                    foreach (var refer in state.LinkCache.ResolveAllContexts<MiscItem, IMiscItemGetter>(misc.FormKey))
+                    {
 
+                    }
+                    misc.Name = "DummyResource";
+
+
+                    {
+                        misc.Name = "DummyClutter";
+                    }
+                }
+                return misc;
             }
             return record;
         }
@@ -55,8 +184,6 @@ namespace Poverty
         public static void RunPatch(IPatcherState<ISkyrimMod, ISkyrimModGetter> state)
         {
             int count = 0;
-
-            GameRelease = state.GameRelease;
 
             // handle leveled items - LVLI records
             if (Settings.IsEnabled<LeveledItem>())
